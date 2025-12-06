@@ -30,7 +30,7 @@ app.onError((err, c) => {
 
 // Setup OpenAPI registry
 const openapi = fromHono(app, {
-	docs_url: "/",
+	docs_url: "/documentation",
 	schema: {
 		info: {
 			title: "My Awesome API",

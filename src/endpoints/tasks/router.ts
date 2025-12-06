@@ -5,8 +5,14 @@ import { TaskCreate } from "./taskCreate";
 import { TaskRead } from "./taskRead";
 import { TaskUpdate } from "./taskUpdate";
 import { TaskDelete } from "./taskDelete";
+import { authMiddleware } from "../../middleware/auth";
 
-export const tasksRouter = fromHono(new Hono());
+const app = new Hono();
+
+// Apply authentication middleware to all task routes
+app.use("/*", authMiddleware);
+
+export const tasksRouter = fromHono(app);
 
 tasksRouter.get("/", TaskList);
 tasksRouter.post("/", TaskCreate);

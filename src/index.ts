@@ -3,15 +3,38 @@ import { Hono } from "hono";
 import { tasksRouter } from "./endpoints/tasks/router";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { DummyEndpoint } from "./endpoints/dummyEndpoint";
+import { authRouter } from "./endpoints/auth";
+import { HTTPException } from "hono/http-exception";
+import { authMiddleware } from "./middleware/auth";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
+
+// Conditionally protect the documentation endpoint in production only
+app.use("/documentation", async (c, next) => {
+	// Only require authentication in production
+	if (c.env.ENVIRONMENT === "production") {
+		return authMiddleware(c, next);
+	}
+	await next();
+});
 
 app.onError((err, c) => {
 	if (err instanceof ApiException) {
 		// If it's a Chanfana ApiException, let Chanfana handle the response
 		return c.json(
 			{ success: false, errors: err.buildResponse() },
+			err.status as ContentfulStatusCode,
+		);
+	}
+
+	if (err instanceof HTTPException) {
+		// Handle Hono HTTPException (used by auth middleware)
+		return c.json(
+			{
+				success: false,
+				errors: [{ code: err.status, message: err.message }],
+			},
 			err.status as ContentfulStatusCode,
 		);
 	}
@@ -35,7 +58,7 @@ const openapi = fromHono(app, {
 		info: {
 			title: "My Awesome API",
 			version: "2.0.0",
-			description: "This is the documentation for my awesome API.",
+			description: "This is the documentation for my awesome API with JWT authentication.",
 		},
 	},
 });
@@ -43,6 +66,7 @@ const openapi = fromHono(app, {
 // Register Tasks Sub router
 openapi.route("/tasks", tasksRouter);
 
+openapi.route("/auth", authRouter)
 // Register other endpoints
 openapi.post("/dummy/:slug", DummyEndpoint);
 
